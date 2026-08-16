@@ -28,6 +28,15 @@ const DEFAULT_SETTINGS = {
   radarMode: "combined",
 };
 
+const THEME_COLORS = {
+  soft: "#f6eef4",
+  "soft-blue": "#eef4fb",
+  "soft-yellow": "#faf3df",
+  "soft-green": "#edf7ef",
+  tech: "#090d16",
+  plain: "#f7f7f4",
+};
+
 const form = document.querySelector("#scoreForm");
 const subjectSelect = document.querySelector("#subject");
 const recordsList = document.querySelector("#recordsList");
@@ -158,7 +167,7 @@ function applySettings() {
   radarMode.value = settings.radarMode;
   document.querySelector("#studentName").value = profileName();
   document.querySelector("#profileLabel").textContent = `${profileName()} 的近況`;
-  document.querySelector("meta[name='theme-color']").setAttribute("content", settings.theme === "tech" ? "#090d16" : settings.theme === "plain" ? "#f7f7f4" : "#f6eef4");
+  document.querySelector("meta[name='theme-color']").setAttribute("content", THEME_COLORS[settings.theme] ?? THEME_COLORS.soft);
 }
 
 function updateSummary() {
