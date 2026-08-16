@@ -1,19 +1,20 @@
 const STORAGE_KEY = "grade-ledger.records.v1";
+const SETTINGS_KEY = "grade-ledger.settings.v1";
 
 const SUBJECTS = [
-  { id: "國文", label: "國文", radar: "國文" },
-  { id: "英文", label: "英文", radar: "英文" },
-  { id: "數學", label: "數學", radar: "數學" },
-  { id: "歷史", label: "歷史", radar: "社會" },
-  { id: "地理", label: "地理", radar: "社會" },
-  { id: "公民", label: "公民", radar: "社會" },
-  { id: "社會", label: "社會（合科）", radar: "社會" },
-  { id: "物理", label: "物理", radar: "自然" },
-  { id: "化學", label: "化學", radar: "自然" },
-  { id: "生物", label: "生物", radar: "自然" },
-  { id: "地科", label: "地科", radar: "自然" },
-  { id: "理化", label: "理化（合科）", radar: "自然" },
-  { id: "自然", label: "自然（合科）", radar: "自然" },
+  { id: "國文", label: "國文" },
+  { id: "英文", label: "英文" },
+  { id: "數學", label: "數學" },
+  { id: "歷史", label: "歷史" },
+  { id: "地理", label: "地理" },
+  { id: "公民", label: "公民" },
+  { id: "社會", label: "社會（合科）" },
+  { id: "物理", label: "物理" },
+  { id: "化學", label: "化學" },
+  { id: "生物", label: "生物" },
+  { id: "地科", label: "地科" },
+  { id: "理化", label: "理化（合科）" },
+  { id: "自然", label: "自然（合科）" },
 ];
 
 const RADAR_MODES = {
@@ -21,12 +22,16 @@ const RADAR_MODES = {
   split: ["國文", "英文", "數學", "歷史", "地理", "公民", "物理", "化學", "生物", "地科"],
 };
 
+const DEFAULT_SETTINGS = {
+  profileName: "我",
+  theme: "soft",
+  radarMode: "combined",
+};
+
 const form = document.querySelector("#scoreForm");
 const subjectSelect = document.querySelector("#subject");
 const recordsList = document.querySelector("#recordsList");
-const studentFilter = document.querySelector("#studentFilter");
 const radarMode = document.querySelector("#radarMode");
-const trendStudent = document.querySelector("#trendStudent");
 const trendSubject = document.querySelector("#trendSubject");
 const trendSubjectMode = document.querySelector("#trendSubjectMode");
 const trendType = document.querySelector("#trendType");
@@ -35,21 +40,46 @@ const searchInput = document.querySelector("#searchInput");
 const importFile = document.querySelector("#importFile");
 const cancelEdit = document.querySelector("#cancelEdit");
 const saveButton = document.querySelector("#saveButton");
+const profileNameInput = document.querySelector("#profileName");
+const themeSelect = document.querySelector("#themeSelect");
+const settingsButton = document.querySelector("#settingsButton");
+const settingsPanel = document.querySelector("#settingsPanel");
 
 let records = loadRecords();
+let settings = loadSettings();
 let editingId = null;
 
 function loadRecords() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
+    return JSON.parse(localStorage.getItem(STORAGE_KEY)) ?? [];
   } catch {
     return [];
   }
 }
 
+function loadSettings() {
+  try {
+    return { ...DEFAULT_SETTINGS, ...(JSON.parse(localStorage.getItem(SETTINGS_KEY)) ?? {}) };
+  } catch {
+    return { ...DEFAULT_SETTINGS };
+  }
+}
+
 function saveRecords() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+}
+
+function saveSettings() {
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+}
+
+function profileName() {
+  return settings.profileName.trim() || "我";
+}
+
+function currentRecords() {
+  const name = profileName();
+  return records.filter((record) => (record.studentName || "我") === name);
 }
 
 function percent(record) {
@@ -62,10 +92,6 @@ function rounded(value, digits = 1) {
 
 function today() {
   return new Date().toISOString().slice(0, 10);
-}
-
-function uniqueStudents() {
-  return [...new Set(records.map((record) => record.studentName).filter(Boolean))].sort((a, b) => a.localeCompare(b, "zh-Hant"));
 }
 
 function subjectLabel(subjectId) {
@@ -99,14 +125,11 @@ function average(values) {
   return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
-function latestBySubject(studentName, mode = "combined") {
+function latestBySubject(source, mode = "combined") {
   const axes = RADAR_MODES[mode] ?? RADAR_MODES.combined;
-  const source = records
-    .filter((record) => !studentName || record.studentName === studentName)
-    .sort((a, b) => a.examDate.localeCompare(b.examDate));
   const map = new Map();
 
-  for (const record of source) {
+  for (const record of [...source].sort((a, b) => a.examDate.localeCompare(b.examDate))) {
     for (const axis of subjectTargets(record.subject, mode)) {
       if (!axes.includes(axis)) continue;
       if (!map.has(axis)) map.set(axis, []);
@@ -128,44 +151,44 @@ function populateSubjects() {
   ].join("");
 }
 
-function populateStudents() {
-  const students = uniqueStudents();
-  const options = students.length
-    ? students.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join("")
-    : '<option value="">尚無學生</option>';
-
-  studentFilter.innerHTML = options;
-  trendStudent.innerHTML = ['<option value="all">全部學生</option>', ...students.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`)].join("");
-  document.querySelector("#studentList").innerHTML = students.map((name) => `<option value="${escapeHtml(name)}"></option>`).join("");
-
-  if (students.length && !students.includes(studentFilter.value)) {
-    studentFilter.value = students[0];
-  }
+function applySettings() {
+  document.documentElement.dataset.theme = settings.theme;
+  profileNameInput.value = profileName();
+  themeSelect.value = settings.theme;
+  radarMode.value = settings.radarMode;
+  document.querySelector("#studentName").value = profileName();
+  document.querySelector("#profileLabel").textContent = `${profileName()} 的近況`;
+  document.querySelector("meta[name='theme-color']").setAttribute("content", settings.theme === "tech" ? "#090d16" : settings.theme === "plain" ? "#f7f7f4" : "#f6eef4");
 }
 
 function updateSummary() {
-  document.querySelector("#totalRecords").textContent = records.length;
-  const sorted = [...records].sort((a, b) => b.examDate.localeCompare(a.examDate));
-  const recent = sorted.slice(0, 8).map(percent);
+  const source = currentRecords();
+  document.querySelector("#recordCount").textContent = `${source.length} 筆`;
+  const recent = [...source].sort((a, b) => b.examDate.localeCompare(a.examDate)).slice(0, 8).map(percent);
   document.querySelector("#latestAverage").textContent = recent.length ? `${rounded(average(recent))}%` : "-";
 
-  const byAxis = latestBySubject(studentFilter.value || uniqueStudents()[0], radarMode.value);
-  const available = byAxis.filter((item) => Number.isFinite(item.value));
+  const available = latestBySubject(source, settings.radarMode).filter((item) => Number.isFinite(item.value));
   available.sort((a, b) => b.value - a.value);
   document.querySelector("#bestSubject").textContent = available[0] ? `${available[0].axis} ${rounded(available[0].value)}%` : "-";
   document.querySelector("#watchSubject").textContent = available.at(-1) ? `${available.at(-1).axis} ${rounded(available.at(-1).value)}%` : "-";
+  document.querySelector("#radarModeLabel").textContent = settings.radarMode === "split" ? "拆分細科" : "合併五軸";
 }
 
 function drawRadar() {
   const canvas = document.querySelector("#radarChart");
   const ctx = canvas.getContext("2d");
-  const data = latestBySubject(studentFilter.value, radarMode.value);
+  const data = latestBySubject(currentRecords(), settings.radarMode);
   const axes = data.map((item) => item.axis);
   const width = canvas.width;
   const height = canvas.height;
   const centerX = width / 2;
   const centerY = height / 2 + 8;
   const radius = Math.min(width, height) * (axes.length > 6 ? 0.29 : 0.34);
+  const styles = getComputedStyle(document.documentElement);
+  const ink = styles.getPropertyValue("--ink").trim();
+  const line = styles.getPropertyValue("--line").trim();
+  const accent = styles.getPropertyValue("--accent").trim();
+  const accent2 = styles.getPropertyValue("--accent-2").trim();
 
   ctx.clearRect(0, 0, width, height);
   ctx.lineWidth = 1;
@@ -179,7 +202,7 @@ function drawRadar() {
       index === 0 ? ctx.moveTo(point.x, point.y) : ctx.lineTo(point.x, point.y);
     });
     ctx.closePath();
-    ctx.strokeStyle = "#d7e1df";
+    ctx.strokeStyle = line;
     ctx.stroke();
   }
 
@@ -189,9 +212,9 @@ function drawRadar() {
     ctx.beginPath();
     ctx.moveTo(centerX, centerY);
     ctx.lineTo(outer.x, outer.y);
-    ctx.strokeStyle = "#c4d1ce";
+    ctx.strokeStyle = line;
     ctx.stroke();
-    ctx.fillStyle = "#1c2b2e";
+    ctx.fillStyle = ink;
     ctx.textAlign = label.x < centerX - 8 ? "right" : label.x > centerX + 8 ? "left" : "center";
     ctx.textBaseline = "middle";
     ctx.fillText(axis, label.x, label.y);
@@ -204,8 +227,8 @@ function drawRadar() {
     index === 0 ? ctx.moveTo(point.x, point.y) : ctx.lineTo(point.x, point.y);
   });
   ctx.closePath();
-  ctx.fillStyle = "rgba(216, 108, 98, 0.26)";
-  ctx.strokeStyle = "#d86c62";
+  ctx.fillStyle = colorWithAlpha(accent, 0.22);
+  ctx.strokeStyle = accent;
   ctx.lineWidth = 3;
   ctx.fill();
   ctx.stroke();
@@ -215,7 +238,7 @@ function drawRadar() {
     const point = polarPoint(centerX, centerY, radius * (value / 100), index, data.length);
     ctx.beginPath();
     ctx.arc(point.x, point.y, 5, 0, Math.PI * 2);
-    ctx.fillStyle = "#24505a";
+    ctx.fillStyle = accent2;
     ctx.fill();
   });
 }
@@ -233,9 +256,14 @@ function drawTrend() {
   const ctx = canvas.getContext("2d");
   const width = canvas.width;
   const height = canvas.height;
-  const padding = { top: 28, right: 24, bottom: 48, left: 48 };
-  const source = records
-    .filter((record) => trendStudent.value === "all" || record.studentName === trendStudent.value)
+  const padding = { top: 28, right: 24, bottom: 46, left: 46 };
+  const styles = getComputedStyle(document.documentElement);
+  const ink = styles.getPropertyValue("--ink").trim();
+  const muted = styles.getPropertyValue("--muted").trim();
+  const line = styles.getPropertyValue("--line").trim();
+  const accent = styles.getPropertyValue("--accent").trim();
+  const warn = styles.getPropertyValue("--warn").trim();
+  const source = currentRecords()
     .filter((record) => {
       if (trendSubject.value === "all") return true;
       if (trendSubjectMode.value === "exact") return record.subject === trendSubject.value;
@@ -246,7 +274,7 @@ function drawTrend() {
 
   ctx.clearRect(0, 0, width, height);
   ctx.font = "14px -apple-system, BlinkMacSystemFont, 'Noto Sans TC', sans-serif";
-  ctx.strokeStyle = "#d7e1df";
+  ctx.strokeStyle = line;
   ctx.lineWidth = 1;
 
   for (let score = 0; score <= 100; score += 20) {
@@ -255,22 +283,15 @@ function drawTrend() {
     ctx.moveTo(padding.left, y);
     ctx.lineTo(width - padding.right, y);
     ctx.stroke();
-    ctx.fillStyle = "#738083";
+    ctx.fillStyle = muted;
     ctx.textAlign = "right";
     ctx.fillText(String(score), padding.left - 8, y + 5);
   }
 
-  ctx.strokeStyle = "#81908d";
-  ctx.beginPath();
-  ctx.moveTo(padding.left, padding.top);
-  ctx.lineTo(padding.left, height - padding.bottom);
-  ctx.lineTo(width - padding.right, height - padding.bottom);
-  ctx.stroke();
-
   if (!source.length) {
-    ctx.fillStyle = "#667275";
+    ctx.fillStyle = muted;
     ctx.textAlign = "center";
-    ctx.fillText("沒有符合條件的記錄", width / 2, height / 2);
+    ctx.fillText("還沒有符合條件的紀錄", width / 2, height / 2);
     return;
   }
 
@@ -284,22 +305,22 @@ function drawTrend() {
   points.forEach((point, index) => {
     index === 0 ? ctx.moveTo(point.x, point.y) : ctx.lineTo(point.x, point.y);
   });
-  ctx.strokeStyle = "#24505a";
+  ctx.strokeStyle = accent;
   ctx.lineWidth = 3;
   ctx.stroke();
 
   points.forEach((point, index) => {
     ctx.beginPath();
     ctx.arc(point.x, point.y, 5, 0, Math.PI * 2);
-    ctx.fillStyle = point.record.examType === "模擬考" ? "#d86c62" : "#d9a441";
+    ctx.fillStyle = point.record.examType === "模擬考" ? accent : warn;
     ctx.fill();
 
-    if (index === 0 || index === points.length - 1 || points.length <= 8) {
-      ctx.fillStyle = "#263638";
+    if (index === 0 || index === points.length - 1 || points.length <= 7) {
+      ctx.fillStyle = ink;
       ctx.textAlign = "center";
       ctx.fillText(rounded(percent(point.record), 0), point.x, point.y - 12);
-      ctx.fillStyle = "#738083";
-      ctx.fillText(point.record.examDate.slice(5), point.x, height - 22);
+      ctx.fillStyle = muted;
+      ctx.fillText(point.record.examDate.slice(5), point.x, height - 20);
     }
   });
 }
@@ -311,16 +332,17 @@ function scale(value, inMin, inMax, outMin, outMax) {
 
 function renderRecords() {
   const query = searchInput.value.trim().toLowerCase();
-  const filtered = records
+  const filtered = currentRecords()
     .filter((record) => recordTypeFilter.value === "all" || record.examType === recordTypeFilter.value)
     .filter((record) => {
-      const haystack = `${record.studentName} ${record.subject} ${subjectLabel(record.subject)} ${record.note}`.toLowerCase();
+      const haystack = `${record.subject} ${subjectLabel(record.subject)} ${record.note}`.toLowerCase();
       return !query || haystack.includes(query);
     })
-    .sort((a, b) => b.examDate.localeCompare(a.examDate));
+    .sort((a, b) => b.examDate.localeCompare(a.examDate))
+    .slice(0, 12);
 
   if (!filtered.length) {
-    recordsList.innerHTML = '<div class="empty-state">還沒有符合條件的成績記錄</div>';
+    recordsList.innerHTML = '<div class="empty-state">還沒有成績紀錄</div>';
     return;
   }
 
@@ -328,7 +350,6 @@ function renderRecords() {
     <article class="record-item">
       <div class="record-main">
         <div class="record-title">
-          <span>${escapeHtml(record.studentName)}</span>
           <span class="badge">${escapeHtml(record.examType)}</span>
           <span>${escapeHtml(subjectLabel(record.subject))}</span>
         </div>
@@ -347,24 +368,22 @@ function renderRecords() {
 }
 
 function updateShareCard() {
-  const student = studentFilter.value || uniqueStudents()[0];
-  const source = records.filter((record) => record.studentName === student).sort((a, b) => a.examDate.localeCompare(b.examDate));
+  const source = currentRecords().sort((a, b) => a.examDate.localeCompare(b.examDate));
   const recent = source.slice(-6);
   const recentAverage = average(recent.map(percent));
-  const axes = latestBySubject(student, radarMode.value).filter((item) => Number.isFinite(item.value)).sort((a, b) => b.value - a.value);
+  const axes = latestBySubject(source, settings.radarMode).filter((item) => Number.isFinite(item.value)).sort((a, b) => b.value - a.value);
 
-  document.querySelector("#shareTitle").textContent = student ? `${student} 的能力曲線` : "選擇學生後產生摘要";
   document.querySelector("#shareScore").textContent = recent.length ? rounded(recentAverage, 0) : "-";
   document.querySelector("#shareText").textContent = recent.length
-    ? `最近 ${recent.length} 筆平均 ${rounded(recentAverage)}%。目前較穩的是 ${axes[0]?.axis ?? "-"}，接下來可多觀察 ${axes.at(-1)?.axis ?? "-"}。能力圖使用${radarMode.value === "split" ? "拆分細科" : "合併五軸"}視角。`
-    : "累積幾次紀錄後，這裡會顯示最近平均、進步科目和需要關注的科目。";
+    ? `最近 ${recent.length} 筆平均 ${rounded(recentAverage)}%。${axes[0]?.axis ?? "-"}目前比較穩，${axes.at(-1)?.axis ?? "-"}可以再多看幾次。`
+    : "先記一筆分數，這裡會變成你的能力曲線摘要。";
 }
 
 function refresh() {
-  populateStudents();
+  applySettings();
   updateSummary();
-  drawRadar();
   drawTrend();
+  drawRadar();
   renderRecords();
   updateShareCard();
 }
@@ -378,6 +397,17 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
+function colorWithAlpha(color, alpha) {
+  const scratch = document.createElement("canvas").getContext("2d");
+  scratch.fillStyle = color;
+  const normalized = scratch.fillStyle;
+  if (!normalized.startsWith("#") || normalized.length !== 7) return color;
+  const r = parseInt(normalized.slice(1, 3), 16);
+  const g = parseInt(normalized.slice(3, 5), 16);
+  const b = parseInt(normalized.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 function recordFromForm() {
   const formData = new FormData(form);
   const score = Number(formData.get("score"));
@@ -389,7 +419,7 @@ function recordFromForm() {
 
   return {
     id: editingId ?? crypto.randomUUID(),
-    studentName: String(formData.get("studentName")).trim(),
+    studentName: profileName(),
     examDate: String(formData.get("examDate")),
     examType: String(formData.get("examType")),
     subject: String(formData.get("subject")),
@@ -405,8 +435,9 @@ function resetForm() {
   form.reset();
   document.querySelector("#examDate").value = today();
   document.querySelector("#maxScore").value = "100";
+  document.querySelector("#studentName").value = profileName();
   cancelEdit.hidden = true;
-  saveButton.textContent = "儲存記錄";
+  saveButton.textContent = "儲存";
 }
 
 function editRecord(id) {
@@ -414,7 +445,6 @@ function editRecord(id) {
   if (!record) return;
 
   editingId = id;
-  form.studentName.value = record.studentName;
   form.examDate.value = record.examDate;
   form.examType.value = record.examType;
   form.subject.value = record.subject;
@@ -422,7 +452,7 @@ function editRecord(id) {
   form.maxScore.value = record.maxScore;
   form.note.value = record.note ?? "";
   cancelEdit.hidden = false;
-  saveButton.textContent = "更新記錄";
+  saveButton.textContent = "更新";
   form.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
@@ -492,7 +522,7 @@ function importCsv(file) {
       const item = Object.fromEntries(header.map((key, index) => [key, row[index] ?? ""]));
       return {
         id: crypto.randomUUID(),
-        studentName: item.studentName,
+        studentName: item.studentName || profileName(),
         examDate: item.examDate,
         examType: item.examType,
         subject: item.subject,
@@ -512,41 +542,39 @@ function importCsv(file) {
 }
 
 function loadDemo() {
-  const students = ["小明", "小美"];
+  const name = profileName();
   const demo = [
-    ["2026-05-10", "小明", "模擬考", "國文", 72],
-    ["2026-05-10", "小明", "模擬考", "英文", 68],
-    ["2026-05-10", "小明", "模擬考", "數學", 61],
-    ["2026-05-10", "小明", "模擬考", "社會", 78],
-    ["2026-05-10", "小明", "模擬考", "自然", 58],
-    ["2026-06-15", "小明", "段考", "數學", 70],
-    ["2026-06-15", "小明", "段考", "歷史", 82],
-    ["2026-06-15", "小明", "段考", "地理", 74],
-    ["2026-06-15", "小明", "段考", "公民", 79],
-    ["2026-06-15", "小明", "段考", "理化", 64],
-    ["2026-07-02", "小明", "小考", "生物", 71],
-    ["2026-07-02", "小明", "小考", "地科", 69],
-    ["2026-07-20", "小明", "練習卷", "數學", 76],
-    ["2026-07-20", "小明", "練習卷", "理化", 72],
-    ["2026-05-12", "小美", "模擬考", "國文", 84],
-    ["2026-05-12", "小美", "模擬考", "英文", 91],
-    ["2026-05-12", "小美", "模擬考", "數學", 73],
-    ["2026-05-12", "小美", "模擬考", "社會", 80],
-    ["2026-05-12", "小美", "模擬考", "自然", 77],
-    ["2026-07-03", "小美", "小考", "化學", 88],
+    ["2026-05-10", "模擬考", "國文", 72],
+    ["2026-05-10", "模擬考", "英文", 68],
+    ["2026-05-10", "模擬考", "數學", 61],
+    ["2026-05-10", "模擬考", "社會", 78],
+    ["2026-05-10", "模擬考", "自然", 58],
+    ["2026-06-15", "段考", "數學", 70],
+    ["2026-06-15", "段考", "歷史", 82],
+    ["2026-06-15", "段考", "地理", 74],
+    ["2026-06-15", "段考", "公民", 79],
+    ["2026-06-15", "段考", "理化", 64],
+    ["2026-07-02", "小考", "生物", 71],
+    ["2026-07-02", "小考", "地科", 69],
+    ["2026-07-20", "練習卷", "數學", 76],
+    ["2026-07-20", "練習卷", "理化", 72],
   ];
 
-  records = demo.map(([examDate, studentName, examType, subject, score], index) => ({
-    id: `demo-${index}-${crypto.randomUUID()}`,
-    studentName,
-    examDate,
-    examType,
-    subject,
-    score,
-    maxScore: 100,
-    note: students.includes(studentName) && examType === "模擬考" ? "範例資料" : "",
-    updatedAt: new Date().toISOString(),
-  }));
+  records = records.filter((record) => record.studentName !== name);
+  records = [
+    ...records,
+    ...demo.map(([examDate, examType, subject, score], index) => ({
+      id: `demo-${index}-${crypto.randomUUID()}`,
+      studentName: name,
+      examDate,
+      examType,
+      subject,
+      score,
+      maxScore: 100,
+      note: examType === "模擬考" ? "範例資料" : "",
+      updatedAt: new Date().toISOString(),
+    })),
+  ];
   saveRecords();
   refresh();
 }
@@ -573,7 +601,32 @@ recordsList.addEventListener("click", (event) => {
   if (deleteId) deleteRecord(deleteId);
 });
 
-for (const element of [studentFilter, radarMode, trendStudent, trendSubject, trendSubjectMode, trendType, recordTypeFilter, searchInput]) {
+settingsButton.addEventListener("click", () => {
+  const isOpen = !settingsPanel.hidden;
+  settingsPanel.hidden = isOpen;
+  settingsButton.setAttribute("aria-expanded", String(!isOpen));
+});
+
+profileNameInput.addEventListener("change", () => {
+  settings.profileName = profileNameInput.value.trim() || "我";
+  saveSettings();
+  resetForm();
+  refresh();
+});
+
+themeSelect.addEventListener("input", () => {
+  settings.theme = themeSelect.value;
+  saveSettings();
+  refresh();
+});
+
+radarMode.addEventListener("input", () => {
+  settings.radarMode = radarMode.value;
+  saveSettings();
+  refresh();
+});
+
+for (const element of [trendSubject, trendSubjectMode, trendType, recordTypeFilter, searchInput]) {
   element.addEventListener("input", refresh);
 }
 
@@ -581,7 +634,7 @@ cancelEdit.addEventListener("click", resetForm);
 document.querySelector("#exportButton").addEventListener("click", exportCsv);
 document.querySelector("#resetDemo").addEventListener("click", loadDemo);
 document.querySelector("#copySummary").addEventListener("click", async () => {
-  const text = `${document.querySelector("#shareTitle").textContent}\n${document.querySelector("#shareText").textContent}`;
+  const text = `${profileName()} 的成績近況\n${document.querySelector("#shareText").textContent}`;
   await navigator.clipboard?.writeText(text);
 });
 importFile.addEventListener("change", () => {
@@ -589,6 +642,7 @@ importFile.addEventListener("change", () => {
 });
 
 populateSubjects();
+applySettings();
 resetForm();
-if (!records.length) loadDemo();
+if (!currentRecords().length) loadDemo();
 refresh();
