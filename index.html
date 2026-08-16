@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#24505a">
+  <meta name="description" content="離線使用的學生成績記帳工具，可記錄考試分數、觀察趨勢與能力雷達圖。">
+  <link rel="stylesheet" href="styles.css">
+  <title>成績帳本</title>
+</head>
+<body>
+  <main class="app-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Student Score Ledger</p>
+        <h1>成績帳本</h1>
+        <p class="subtitle">把模考、段考、小考和練習卷整理成看得懂的能力曲線。</p>
+      </div>
+      <div class="top-actions">
+        <button id="exportButton" type="button">匯出 CSV</button>
+        <label class="file-button">
+          匯入 CSV
+          <input id="importFile" type="file" accept=".csv,text/csv">
+        </label>
+      </div>
+    </header>
+
+    <section class="summary-grid" aria-label="成績摘要">
+      <article>
+        <span>記錄數</span>
+        <strong id="totalRecords">0</strong>
+      </article>
+      <article>
+        <span>最近平均</span>
+        <strong id="latestAverage">-</strong>
+      </article>
+      <article>
+        <span>最穩科目</span>
+        <strong id="bestSubject">-</strong>
+      </article>
+      <article>
+        <span>需要關注</span>
+        <strong id="watchSubject">-</strong>
+      </article>
+    </section>
+
+    <section class="workspace">
+      <form id="scoreForm" class="panel form-panel">
+        <div class="panel-head">
+          <h2>新增記錄</h2>
+          <button id="resetDemo" type="button" class="ghost-button">載入範例</button>
+        </div>
+
+        <label>
+          學生
+          <input id="studentName" name="studentName" list="studentList" maxlength="24" placeholder="例如 小明" required>
+          <datalist id="studentList"></datalist>
+        </label>
+
+        <label>
+          日期
+          <input id="examDate" name="examDate" type="date" required>
+        </label>
+
+        <label>
+          考試類型
+          <select id="examType" name="examType" required>
+            <option value="模擬考">模擬考</option>
+            <option value="期中考">期中考</option>
+            <option value="段考">段考</option>
+            <option value="小考">小考</option>
+            <option value="練習卷">練習卷</option>
+          </select>
+        </label>
+
+        <label>
+          科目
+          <select id="subject" name="subject" required></select>
+        </label>
+
+        <div class="score-row">
+          <label>
+            得分
+            <input id="score" name="score" type="number" inputmode="decimal" min="0" step="0.5" placeholder="86" required>
+          </label>
+          <label>
+            滿分
+            <input id="maxScore" name="maxScore" type="number" inputmode="decimal" min="1" step="1" value="100" required>
+          </label>
+        </div>
+
+        <label>
+          備註
+          <textarea id="note" name="note" rows="3" maxlength="120" placeholder="例如：閱讀題偏慢、化學計算錯兩題"></textarea>
+        </label>
+
+        <div class="form-actions">
+          <button id="cancelEdit" type="button" class="ghost-button" hidden>取消編輯</button>
+          <button id="saveButton" type="submit">儲存記錄</button>
+        </div>
+      </form>
+
+      <section class="panel chart-panel">
+        <div class="panel-head">
+          <h2>能力圖</h2>
+          <div class="filters">
+            <select id="studentFilter" aria-label="選擇學生"></select>
+            <select id="radarMode" aria-label="能力圖科目視角">
+              <option value="combined">合併五軸</option>
+              <option value="split">拆分細科</option>
+            </select>
+          </div>
+        </div>
+        <canvas id="radarChart" width="520" height="420" aria-label="科目能力多邊形圖"></canvas>
+      </section>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head filters-head">
+        <h2>趨勢</h2>
+        <div class="filters">
+          <select id="trendStudent" aria-label="趨勢學生"></select>
+          <select id="trendSubject" aria-label="趨勢科目"></select>
+          <select id="trendSubjectMode" aria-label="趨勢科目解讀">
+            <option value="exact">只看原始科目</option>
+            <option value="related">包含合科/分科</option>
+          </select>
+          <select id="trendType" aria-label="趨勢考試類型">
+            <option value="all">全部類型</option>
+            <option value="模擬考">模擬考</option>
+            <option value="期中考">期中考</option>
+            <option value="段考">段考</option>
+            <option value="小考">小考</option>
+            <option value="練習卷">練習卷</option>
+          </select>
+        </div>
+      </div>
+      <canvas id="trendChart" width="980" height="360" aria-label="成績折線趨勢圖"></canvas>
+    </section>
+
+    <section class="panel share-panel" id="shareCard">
+      <div class="panel-head">
+        <h2>截圖分享卡</h2>
+        <button id="copySummary" type="button" class="ghost-button">複製摘要</button>
+      </div>
+      <div class="share-layout">
+        <div>
+          <p class="share-title" id="shareTitle">選擇學生後產生摘要</p>
+          <p class="share-text" id="shareText">累積幾次紀錄後，這裡會顯示最近平均、進步科目和需要關注的科目。</p>
+        </div>
+        <div class="share-score" id="shareScore">-</div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head filters-head">
+        <h2>記錄</h2>
+        <div class="filters">
+          <input id="searchInput" type="search" placeholder="搜尋學生、科目、備註">
+          <select id="recordTypeFilter" aria-label="記錄類型篩選">
+            <option value="all">全部類型</option>
+            <option value="模擬考">模擬考</option>
+            <option value="期中考">期中考</option>
+            <option value="段考">段考</option>
+            <option value="小考">小考</option>
+            <option value="練習卷">練習卷</option>
+          </select>
+        </div>
+      </div>
+      <div class="records-list" id="recordsList"></div>
+    </section>
+  </main>
+
+  <script src="scripts/app.js"></script>
+</body>
+</html>
