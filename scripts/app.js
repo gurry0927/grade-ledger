@@ -53,10 +53,13 @@ const profileNameInput = document.querySelector("#profileName");
 const themeSelect = document.querySelector("#themeSelect");
 const settingsButton = document.querySelector("#settingsButton");
 const settingsPanel = document.querySelector("#settingsPanel");
+const tabButtons = [...document.querySelectorAll("[data-tab]")];
+const tabPanels = [...document.querySelectorAll("[data-tab-panel]")];
 
 let records = loadRecords();
 let settings = loadSettings();
 let editingId = null;
+let activeTab = "overview";
 
 function loadRecords() {
   try {
@@ -397,6 +400,18 @@ function refresh() {
   updateShareCard();
 }
 
+function switchTab(tabName) {
+  activeTab = tabName;
+  for (const button of tabButtons) {
+    const isActive = button.dataset.tab === tabName;
+    button.setAttribute("aria-selected", String(isActive));
+    button.tabIndex = isActive ? 0 : -1;
+  }
+  for (const panel of tabPanels) {
+    panel.hidden = panel.dataset.tabPanel !== tabName;
+  }
+}
+
 function escapeHtml(value) {
   return String(value ?? "")
     .replaceAll("&", "&amp;")
@@ -462,6 +477,7 @@ function editRecord(id) {
   form.note.value = record.note ?? "";
   cancelEdit.hidden = false;
   saveButton.textContent = "更新";
+  switchTab("input");
   form.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
@@ -598,10 +614,15 @@ form.addEventListener("submit", (event) => {
     saveRecords();
     resetForm();
     refresh();
+    switchTab("overview");
   } catch (error) {
     alert(error.message);
   }
 });
+
+for (const button of tabButtons) {
+  button.addEventListener("click", () => switchTab(button.dataset.tab));
+}
 
 recordsList.addEventListener("click", (event) => {
   const editId = event.target.closest("[data-edit]")?.dataset.edit;
@@ -654,4 +675,5 @@ populateSubjects();
 applySettings();
 resetForm();
 if (!currentRecords().length) loadDemo();
+switchTab(activeTab);
 refresh();

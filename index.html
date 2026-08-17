@@ -75,111 +75,120 @@
       </div>
     </section>
 
-    <section class="hero-card" id="shareCard">
-      <div>
-        <p class="muted-label" id="profileLabel">我的近況</p>
-        <p class="hero-score" id="shareScore">-</p>
-        <p class="hero-text" id="shareText">先記一筆分數，這裡會變成你的能力曲線摘要。</p>
-      </div>
-      <div class="hero-actions">
-        <button id="copySummary" type="button" class="ghost-button">複製摘要</button>
-      </div>
-    </section>
+    <nav class="tabbar" role="tablist" aria-label="成績帳本功能">
+      <button class="tab-button" id="overviewTab" type="button" role="tab" aria-selected="true" aria-controls="overviewPanel" data-tab="overview">顯示</button>
+      <button class="tab-button" id="inputTab" type="button" role="tab" aria-selected="false" aria-controls="inputPanel" data-tab="input" tabindex="-1">輸入</button>
+    </nav>
 
-    <section class="quick-stats" aria-label="成績摘要">
-      <article>
-        <span>最近平均</span>
-        <strong id="latestAverage">-</strong>
-      </article>
-      <article>
-        <span>穩定科目</span>
-        <strong id="bestSubject">-</strong>
-      </article>
-      <article>
-        <span>想多看</span>
-        <strong id="watchSubject">-</strong>
-      </article>
-    </section>
-
-    <section class="dashboard">
-      <section class="panel trend-panel">
-        <div class="panel-head">
-          <h2>走勢</h2>
-          <span id="recordCount">0 筆</span>
+    <section class="tab-panel" id="overviewPanel" role="tabpanel" aria-labelledby="overviewTab" data-tab-panel="overview">
+      <section class="hero-card" id="shareCard">
+        <div>
+          <p class="muted-label" id="profileLabel">我的近況</p>
+          <p class="hero-score" id="shareScore">-</p>
+          <p class="hero-text" id="shareText">先記一筆分數，這裡會變成你的能力曲線摘要。</p>
         </div>
-        <canvas id="trendChart" width="920" height="360" aria-label="成績折線趨勢圖"></canvas>
+        <div class="hero-actions">
+          <button id="copySummary" type="button" class="ghost-button">複製摘要</button>
+        </div>
       </section>
 
-      <section class="panel radar-panel">
+      <section class="quick-stats" aria-label="成績摘要">
+        <article>
+          <span>最近平均</span>
+          <strong id="latestAverage">-</strong>
+        </article>
+        <article>
+          <span>穩定科目</span>
+          <strong id="bestSubject">-</strong>
+        </article>
+        <article>
+          <span>想多看</span>
+          <strong id="watchSubject">-</strong>
+        </article>
+      </section>
+
+      <section class="dashboard">
+        <section class="panel trend-panel">
+          <div class="panel-head">
+            <h2>走勢</h2>
+            <span id="recordCount">0 筆</span>
+          </div>
+          <canvas id="trendChart" width="920" height="360" aria-label="成績折線趨勢圖"></canvas>
+        </section>
+
+        <section class="panel radar-panel">
+          <div class="panel-head">
+            <h2>能力圖</h2>
+            <span id="radarModeLabel">合併五軸</span>
+          </div>
+          <canvas id="radarChart" width="520" height="420" aria-label="科目能力多邊形圖"></canvas>
+        </section>
+      </section>
+
+      <section class="panel records-panel">
         <div class="panel-head">
-          <h2>能力圖</h2>
-          <span id="radarModeLabel">合併五軸</span>
+          <h2>最近紀錄</h2>
+          <select id="recordTypeFilter" aria-label="記錄類型篩選">
+            <option value="all">全部</option>
+            <option value="模擬考">模擬考</option>
+            <option value="期中考">期中考</option>
+            <option value="段考">段考</option>
+            <option value="小考">小考</option>
+            <option value="練習卷">練習卷</option>
+          </select>
         </div>
-        <canvas id="radarChart" width="520" height="420" aria-label="科目能力多邊形圖"></canvas>
+        <input id="searchInput" class="quiet-search" type="search" placeholder="搜尋科目或備註">
+        <div class="records-list" id="recordsList"></div>
       </section>
     </section>
 
-    <section class="panel add-panel">
-      <div class="panel-head">
-        <h2>記一筆</h2>
-      </div>
-      <form id="scoreForm" class="score-form">
-        <input id="studentName" name="studentName" type="hidden">
-        <div class="form-row">
-          <label>
-            日期
-            <input id="examDate" name="examDate" type="date" required>
-          </label>
-          <label>
-            類型
-            <select id="examType" name="examType" required>
-              <option value="模擬考">模擬考</option>
-              <option value="期中考">期中考</option>
-              <option value="段考">段考</option>
-              <option value="小考">小考</option>
-              <option value="練習卷">練習卷</option>
-            </select>
-          </label>
-          <label>
-            科目
-            <select id="subject" name="subject" required></select>
-          </label>
+    <section class="tab-panel" id="inputPanel" role="tabpanel" aria-labelledby="inputTab" data-tab-panel="input" hidden>
+      <section class="panel add-panel">
+        <div class="panel-head">
+          <h2>記一筆</h2>
         </div>
-        <div class="form-row compact">
-          <label>
-            得分
-            <input id="score" name="score" type="number" inputmode="decimal" min="0" step="0.5" placeholder="86" required>
-          </label>
-          <label>
-            滿分
-            <input id="maxScore" name="maxScore" type="number" inputmode="decimal" min="1" step="1" value="100" required>
-          </label>
-          <label>
-            備註
-            <input id="note" name="note" maxlength="80" placeholder="可空白">
-          </label>
-        </div>
-        <div class="form-actions">
-          <button id="cancelEdit" type="button" class="ghost-button" hidden>取消</button>
-          <button id="saveButton" type="submit">儲存</button>
-        </div>
-      </form>
-    </section>
-
-    <section class="panel records-panel">
-      <div class="panel-head">
-        <h2>最近紀錄</h2>
-        <select id="recordTypeFilter" aria-label="記錄類型篩選">
-          <option value="all">全部</option>
-          <option value="模擬考">模擬考</option>
-          <option value="期中考">期中考</option>
-          <option value="段考">段考</option>
-          <option value="小考">小考</option>
-          <option value="練習卷">練習卷</option>
-        </select>
-      </div>
-      <input id="searchInput" class="quiet-search" type="search" placeholder="搜尋科目或備註">
-      <div class="records-list" id="recordsList"></div>
+        <form id="scoreForm" class="score-form">
+          <input id="studentName" name="studentName" type="hidden">
+          <div class="form-row">
+            <label>
+              日期
+              <input id="examDate" name="examDate" type="date" required>
+            </label>
+            <label>
+              類型
+              <select id="examType" name="examType" required>
+                <option value="模擬考">模擬考</option>
+                <option value="期中考">期中考</option>
+                <option value="段考">段考</option>
+                <option value="小考">小考</option>
+                <option value="練習卷">練習卷</option>
+              </select>
+            </label>
+            <label>
+              科目
+              <select id="subject" name="subject" required></select>
+            </label>
+          </div>
+          <div class="form-row compact">
+            <label>
+              得分
+              <input id="score" name="score" type="number" inputmode="decimal" min="0" step="0.5" placeholder="86" required>
+            </label>
+            <label>
+              滿分
+              <input id="maxScore" name="maxScore" type="number" inputmode="decimal" min="1" step="1" value="100" required>
+            </label>
+            <label>
+              備註
+              <input id="note" name="note" maxlength="80" placeholder="可空白">
+            </label>
+          </div>
+          <div class="form-actions">
+            <button id="cancelEdit" type="button" class="ghost-button" hidden>取消</button>
+            <button id="saveButton" type="submit">儲存</button>
+          </div>
+        </form>
+      </section>
     </section>
   </main>
 
