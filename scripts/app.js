@@ -181,8 +181,12 @@ function updateSummary() {
 
   const available = latestBySubject(source, settings.radarMode).filter((item) => Number.isFinite(item.value));
   available.sort((a, b) => b.value - a.value);
-  document.querySelector("#bestSubject").textContent = available[0] ? `${available[0].axis} ${rounded(available[0].value)}%` : "-";
-  document.querySelector("#watchSubject").textContent = available.at(-1) ? `${available.at(-1).axis} ${rounded(available.at(-1).value)}%` : "-";
+  const best = available[0];
+  const watch = available.at(-1);
+  document.querySelector("#bestSubjectName").textContent = best?.axis ?? "-";
+  document.querySelector("#bestSubjectScore").textContent = best ? `${rounded(best.value)}%` : "-";
+  document.querySelector("#watchSubjectName").textContent = watch?.axis ?? "-";
+  document.querySelector("#watchSubjectScore").textContent = watch ? `${rounded(watch.value)}%` : "-";
   document.querySelector("#radarModeLabel").textContent = settings.radarMode === "split" ? "拆分細科" : "合併五軸";
 }
 
